@@ -1,0 +1,12 @@
+[project]
+name = "hello-mcp-server"
+version = "0.1.0"
+description = "A simple hello world MCP server"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
