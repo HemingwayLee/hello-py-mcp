@@ -75,3 +75,91 @@ Run Claude Code with the MCP server:
 ```bash
 claude --mcp-server "python /absolute/path/to/hello-py-mcp/server.py"
 ```
+
+## Using with Ollama
+
+Ollama doesn't natively support MCP servers, but you can use them together through various methods:
+
+### Option 1: Using Continue.dev (VS Code/JetBrains)
+
+[Continue.dev](https://continue.dev) is an IDE extension that supports both Ollama and MCP servers.
+
+1. Install the Continue extension in VS Code or JetBrains
+2. Configure your `~/.continue/config.json`:
+
+```json
+{
+  "models": [{
+    "title": "Ollama",
+    "provider": "ollama",
+    "model": "llama3.2"
+  }],
+  "mcpServers": {
+    "hello": {
+      "command": "python",
+      "args": ["/absolute/path/to/hello-py-mcp/server.py"]
+    }
+  }
+}
+```
+
+Replace `/absolute/path/to/hello-py-mcp` with the actual path to this project and adjust the Ollama model name as needed.
+
+### Option 2: Using Open WebUI
+
+[Open WebUI](https://github.com/open-webui/open-webui) supports MCP servers and works with Ollama.
+
+1. Install and run Open WebUI (connects to Ollama by default)
+2. Configure MCP server in Settings → Tools → MCP Servers
+
+### Option 3: Custom Integration
+
+You can build a custom client using the MCP Python SDK and Ollama's API:
+
+```python
+import asyncio
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+import ollama
+
+async def main():
+    # Connect to MCP server
+    server_params = StdioServerParameters(
+        command="python",
+        args=["server.py"]
+    )
+
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+
+            # List available tools
+            tools = await session.list_tools()
+            print(f"Available tools: {tools}")
+
+            # Use Ollama to generate a response
+            response = ollama.chat(
+                model='llama3.2',
+                messages=[{
+                    'role': 'user',
+                    'content': 'Say hello to Alice'
+                }]
+            )
+
+            # Call MCP tool based on LLM response
+            result = await session.call_tool("hello", {"name": "Alice"})
+            print(result)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Option 4: Using MCP Client CLI
+
+You can test the MCP server directly using the MCP inspector:
+
+```bash
+npx @modelcontextprotocol/inspector python server.py
+```
+
+This opens a web interface where you can test your MCP server's tools manually, regardless of which LLM you plan to use.
