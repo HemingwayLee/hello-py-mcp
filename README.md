@@ -2,6 +2,8 @@
 
 A simple MCP (Model Context Protocol) server that provides a greeting tool,
 built with the [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) v2 (`MCPServer`).
+* It is not necessary to listen on a port. The default transport is `stdio`.
+  * It talks to the client over standard input and output, so whatever (e.g., Ollama, Claude Code) launches it as a subprocess (like our MCP [client](https://github.com/HemingwayLee/hello-py-mcp/tree/main/client)) communicates with it directly
 
 ## Prerequisites
 
