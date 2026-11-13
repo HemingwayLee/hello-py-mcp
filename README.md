@@ -1,17 +1,19 @@
 # Hello MCP Server
 
-A simple MCP (Model Context Protocol) server that provides a greeting tool.
+A simple MCP (Model Context Protocol) server that provides a greeting tool,
+built with the [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) v2 (`MCPServer`).
 
 ## Prerequisites
 
-- Python 3.10 or higher
+- Python 3.10 or higher (`mcp` won't install on older versions; on macOS the
+  system `python3` may be 3.9, so use a newer one, e.g. from Homebrew or `uv`)
 
 ## Installation
 
 1. Create and activate a virtual environment:
 
 ```bash
-python -m venv venv
+python3 -m venv venv   # make sure this python3 is 3.10+
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
@@ -35,7 +37,15 @@ Run the server directly:
 python server.py
 ```
 
-The server communicates over stdio and is designed to be launched by an MCP client.
+The server communicates over stdio and is designed to be launched by an MCP client,
+so running it by hand just waits for input (press Ctrl+C to exit). To try it out
+interactively, use the MCP Inspector (see [Testing with MCP Inspector](#testing-with-mcp-inspector)).
+
+> **Note:** MCP clients usually launch the server with an absolute command path and
+> without activating your virtualenv. In the client configs below, point `command` at
+> the virtualenv's interpreter (e.g. `/absolute/path/to/hello-py-mcp/venv/bin/python`,
+> or `venv\Scripts\python.exe` on Windows), not a bare `python`. Otherwise the
+> client may pick a Python that doesn't have `mcp` installed.
 
 ## Available Tools
 
@@ -59,22 +69,24 @@ Add this to your Claude Desktop configuration file:
 {
   "mcpServers": {
     "hello": {
-      "command": "python",
+      "command": "/absolute/path/to/hello-py-mcp/venv/bin/python",
       "args": ["/absolute/path/to/hello-py-mcp/server.py"]
     }
   }
 }
 ```
 
-Replace `/absolute/path/to/hello-py-mcp` with the actual path to this project.
+Replace `/absolute/path/to/hello-py-mcp` with the actual path to this project, then restart Claude Desktop.
 
 ## Using with Claude Code
 
-Run Claude Code with the MCP server:
+Register the server with Claude Code:
 
 ```bash
-claude --mcp-server "python /absolute/path/to/hello-py-mcp/server.py"
+claude mcp add hello -- /absolute/path/to/hello-py-mcp/venv/bin/python /absolute/path/to/hello-py-mcp/server.py
 ```
+
+Then run `claude mcp list` to check that it's connected, or type `/mcp` inside a Claude Code session.
 
 ## Using with Ollama
 
@@ -96,7 +108,7 @@ Ollama doesn't natively support MCP servers, but you can use them together throu
   }],
   "mcpServers": {
     "hello": {
-      "command": "python",
+      "command": "/absolute/path/to/hello-py-mcp/venv/bin/python",
       "args": ["/absolute/path/to/hello-py-mcp/server.py"]
     }
   }
@@ -154,9 +166,22 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-### Option 4: Using MCP Client CLI
+## Automated Test Client
 
-You can test the MCP server directly using the MCP inspector:
+[`client/test_client.py`](client/test_client.py) starts the server over stdio and runs
+end-to-end protocol checks (handshake, ping, tools/list, valid and invalid tool calls).
+It exits with a non-zero status if any check fails:
+
+```bash
+python client/test_client.py
+```
+
+See [`client/README.md`](client/README.md) for details.
+
+## Testing with MCP Inspector
+
+You can test the MCP server directly using the MCP Inspector (requires Node.js).
+Run this from the project directory with the virtualenv activated:
 
 ```bash
 npx @modelcontextprotocol/inspector python server.py
