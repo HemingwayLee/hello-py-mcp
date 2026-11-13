@@ -15,7 +15,7 @@ three roles:
 |---|---|---|
 | **Host** | The app the user works in, which runs the model | Claude Desktop, Claude Code, or Continue.dev / Open WebUI with Ollama |
 | **Client** | The connection the host opens to one server | Built into each host, or [`client/test_client.py`](client/test_client.py) |
-| **Server** | The program that provides tools, resources and prompts | [`server.py`](server.py) |
+| **Server** | The program that provides tools, resources and prompts | [`server.py`](server.py) (stdio) or [`http_server.py`](http_server.py) (HTTP) |
 
 The transport (`stdio` or `streamable-http`) only decides how messages travel. With
 `stdio`, the client starts the server as a subprocess, so no port is needed.
@@ -63,6 +63,60 @@ interactively, use the MCP Inspector (see [Testing with MCP Inspector](#testing-
 > the virtualenv's interpreter (e.g. `/absolute/path/to/hello-py-mcp/venv/bin/python`,
 > or `venv\Scripts\python.exe` on Windows), not a bare `python`. Otherwise the
 > client may pick a Python that doesn't have `mcp` installed.
+
+## Running the HTTP Server
+
+[`http_server.py`](http_server.py) provides the same `hello` tool over the
+**Streamable HTTP** transport instead of stdio. It listens on `0.0.0.0:1234`, so other
+machines on your network can reach it too.
+
+Start it and leave it running (with HTTP, clients connect to a running server instead
+of launching it):
+
+```bash
+venv/bin/python http_server.py
+```
+
+The MCP endpoint is `http://127.0.0.1:1234/mcp` (from another machine, use this
+computer's IP address instead of `127.0.0.1`).
+
+> **Warning:** The server has no authentication. Anyone who can reach port 1234 can
+> call its tools.
+
+### Using it from a browser
+
+Opening `http://127.0.0.1:1234/mcp` directly in a browser **won't work**. The endpoint
+speaks MCP (JSON-RPC with a handshake), not plain web pages, so the browser just gets
+an error:
+
+```json
+{"jsonrpc":"2.0","id":null,"error":{"code":-32600,"message":"Not Acceptable: Client must accept text/event-stream"}}
+```
+
+Use the **MCP Inspector**, a web UI that acts as an MCP client (requires Node.js):
+
+1. With `http_server.py` running, start the Inspector in another terminal:
+
+   ```bash
+   npx @modelcontextprotocol/inspector
+   ```
+
+2. It opens a page in your browser (usually `http://localhost:6274`). If it doesn't,
+   open the URL printed in the terminal, including its `MCP_PROXY_AUTH_TOKEN` part.
+3. In the left panel, set:
+   - **Transport Type:** `Streamable HTTP`
+   - **URL:** `http://127.0.0.1:1234/mcp`
+4. Click **Connect**.
+5. Open the **Tools** tab, click **List Tools**, then select `hello`.
+6. Enter a `name` (e.g. `Alice`) and click **Run Tool**. The result is `Hello, Alice!`.
+
+### Using it with Claude Code
+
+Register it by URL instead of by command:
+
+```bash
+claude mcp add --transport http hello-http http://127.0.0.1:1234/mcp
+```
 
 ## Available Tools
 
