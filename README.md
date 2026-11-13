@@ -100,12 +100,14 @@ Replace `/absolute/path/to/hello-py-mcp` with the actual path to this project, t
 Register the server with Claude Code:
 
 ```bash
-claude mcp add hello -- /absolute/path/to/hello-py-mcp/venv/bin/python /absolute/path/to/hello-py-mcp/server.py
+% claude mcp add hello -- /absolute/path/to/hello-py-mcp/venv/bin/python /absolute/path/to/hello-py-mcp/server.py
 ```
 
+* The packages in venv will be included by above command
+ 
 Then run `claude mcp list` to check that it's connected, or type `/mcp` inside a Claude Code session.
 
-```
+```bash
 % claude mcp list
 claude.ai Claude Docs: https://api.anthropic.com/v1/pages/mcp - ✔ Connected
 claude.ai Gmail: https://gmailmcp.googleapis.com/mcp/v1 - ✔ Connected
@@ -113,6 +115,22 @@ claude.ai Google Drive: https://drivemcp.googleapis.com/mcp/v1 - ✔ Connected
 claude.ai Google Calendar: https://calendarmcp.googleapis.com/mcp/v1 - ✔ Connected
 hello: /Users/ywlee/Desktop/code/projects/hello-py-mcp/venv/bin/python3
 /Users/ywlee/Desktop/code/projects/hello-py-mcp/server.py - ✔ Connected
+```
+
+### Use the prompt `Use the hello tool to greet Alice` in claude code
+
+```
+  Claude Code v2.1.323
+  Opus 5.5 · Claude Pro
+  ~/Desktop/code/projects/hello-py-mcp
+
+❯ Use the hello tool to greet Alice
+
+  Called hello
+
+I called the hello tool with the name Alice, and it returned: "Hello, Alice!"
+
+✻ Sautéed for 4s · done 3:13 PM
 ```
 
 ## Using with Ollama
