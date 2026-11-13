@@ -5,6 +5,21 @@ built with the [MCP Python SDK](https://github.com/modelcontextprotocol/python-s
 * It is not necessary to listen on a port. The default transport is `stdio`.
   * It talks to the client over standard input and output, so whatever (e.g., Ollama, Claude Code) launches it as a subprocess (like our MCP [client](https://github.com/HemingwayLee/hello-py-mcp/tree/main/client)) communicates with it directly
 
+## Terminology
+
+In MCP, "server" names the program's **role**, not whether it uses the network. This
+project is a **stdio MCP server** (also called a local MCP server). The MCP spec defines
+three roles:
+
+| Role | What it is | In this project |
+|---|---|---|
+| **Host** | The app the user works in, which runs the model | Claude Desktop, Claude Code, or Continue.dev / Open WebUI with Ollama |
+| **Client** | The connection the host opens to one server | Built into each host, or [`client/test_client.py`](client/test_client.py) |
+| **Server** | The program that provides tools, resources and prompts | [`server.py`](server.py) |
+
+The transport (`stdio` or `streamable-http`) only decides how messages travel. With
+`stdio`, the client starts the server as a subprocess, so no port is needed.
+
 ## Prerequisites
 
 - Python 3.10 or higher (`mcp` won't install on older versions; on macOS the
