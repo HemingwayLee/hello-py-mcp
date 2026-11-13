@@ -106,11 +106,13 @@ claude mcp add hello -- /absolute/path/to/hello-py-mcp/venv/bin/python /absolute
 Then run `claude mcp list` to check that it's connected, or type `/mcp` inside a Claude Code session.
 
 ```
-claude mcp list
+% claude mcp list
 claude.ai Claude Docs: https://api.anthropic.com/v1/pages/mcp - ✔ Connected
 claude.ai Gmail: https://gmailmcp.googleapis.com/mcp/v1 - ✔ Connected
 claude.ai Google Drive: https://drivemcp.googleapis.com/mcp/v1 - ✔ Connected
 claude.ai Google Calendar: https://calendarmcp.googleapis.com/mcp/v1 - ✔ Connected
+hello: /Users/ywlee/Desktop/code/projects/hello-py-mcp/venv/bin/python3
+/Users/ywlee/Desktop/code/projects/hello-py-mcp/server.py - ✔ Connected
 ```
 
 ## Using with Ollama
