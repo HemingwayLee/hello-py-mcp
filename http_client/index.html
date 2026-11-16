@@ -125,6 +125,9 @@
       <button id="connect">Connect</button>
       <button id="disconnect" class="secondary" disabled>Disconnect</button>
     </div>
+    <div class="row" style="margin-top: 8px;">
+      <input id="key" type="text" value="" placeholder="API key (optional; sent as Authorization: Bearer …)" aria-label="API key" autocomplete="off">
+    </div>
     <div id="status" class="status">Not connected.</div>
   </section>
 
@@ -199,6 +202,7 @@
   function setConnected(on) {
     $("connect").disabled = on;
     $("url").disabled = on;
+    $("key").disabled = on;
     $("disconnect").disabled = !on;
     $("list").disabled = !on;
     $("call").disabled = !on;
@@ -212,6 +216,8 @@
       // The server may answer with plain JSON or with an SSE stream.
       "Accept": "application/json, text/event-stream",
     };
+    const key = $("key").value.trim();
+    if (key) h["Authorization"] = "Bearer " + key;
     if (sessionId) h["Mcp-Session-Id"] = sessionId;
     if (protocolVersion) h["MCP-Protocol-Version"] = protocolVersion;
     return h;
@@ -272,11 +278,23 @@
     } else if (text) {
       try { messages = [JSON.parse(text)]; } catch { /* not JSON */ }
     }
-    const reply = messages.find((m) => m && m.id === message.id) || messages[0];
+    // Only JSON-RPC messages count as replies; an HTTP error body (e.g. a 401 from an
+    // auth check, {"error": "..."}) is not one.
+    messages = messages.filter((m) => m && m.jsonrpc === "2.0");
+    const reply = messages.find((m) => m.id === message.id) || messages[0];
 
     log(res.ok && reply && !reply.error ? "in" : "err", method, detail, reply || text || "(empty body)");
 
-    if (!res.ok && !reply) throw new Error("HTTP " + res.status + ": " + (text || res.statusText));
+    if (!res.ok && !reply) {
+      let reason = text || res.statusText;
+      try {
+        const body = JSON.parse(text);
+        if (typeof body.error === "string") reason = body.error;
+        else if (body.error && body.error.message) reason = body.error.message;
+      } catch { /* not JSON, keep the raw text */ }
+      if (res.status === 401) reason += " — check the API key field";
+      throw new Error("HTTP " + res.status + ": " + reason);
+    }
     if (!reply) throw new Error("No JSON-RPC response for " + method);
     if (reply.error) throw new Error(reply.error.message + " (code " + reply.error.code + ")");
     return reply.result;
