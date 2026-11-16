@@ -306,6 +306,12 @@ It exits with a non-zero status if any check fails:
 python client/test_client.py
 ```
 
+To test `http_server.py` instead, start it and pass its URL:
+
+```bash
+python client/test_client.py http://127.0.0.1:1234/mcp
+```
+
 See [`client/README.md`](client/README.md) for details.
 
 ## Testing with MCP Inspector
