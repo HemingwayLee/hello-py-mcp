@@ -90,8 +90,13 @@ speaks MCP (JSON-RPC with a handshake), not plain web pages, so the browser just
 an error:
 
 ```json
-{"jsonrpc":"2.0","id":null,"error":{"code":-32600,"message":"Not Acceptable: Client must accept text/event-stream"}}
+{"jsonrpc":"2.0","id":null,"error":{"code":-32600,"message":"Bad Request: Missing session ID"}}
 ```
+
+An MCP client first sends `POST /mcp` with an `initialize` message. The server replies
+with a session ID in the `Mcp-Session-Id` header, and the client includes that header
+in every later request. A browser's plain `GET /mcp` skips the handshake and has no
+session ID, so the server rejects it.
 
 Use the **MCP Inspector**, a web UI that acts as an MCP client (requires Node.js):
 
@@ -109,6 +114,32 @@ Use the **MCP Inspector**, a web UI that acts as an MCP client (requires Node.js
 4. Click **Connect**.
 5. Open the **Tools** tab, click **List Tools**, then select `hello`.
 6. Enter a `name` (e.g. `Alice`) and click **Run Tool**. The result is `Hello, Alice!`.
+
+### Using the plain HTML client
+
+[`http_client/index.html`](http_client/index.html) is an MCP client written in plain
+HTML and JavaScript, with no libraries or build step. With `http_server.py` running,
+open the file in your browser (double-click it, or `open http_client/index.html` on
+macOS), then click **Connect**, **List Tools** and **Run Tool**.
+
+The **Protocol log** on the page shows every HTTP request and response, so you can see
+each step the Inspector normally hides:
+
+1. `initialize` (`POST`): the handshake. The server replies with its info and an
+   `Mcp-Session-Id` header.
+2. `notifications/initialized` (`POST`): confirms the handshake (HTTP `202`, no body).
+3. `tools/list` and `tools/call` (`POST`): sent with the `Mcp-Session-Id` and
+   `MCP-Protocol-Version` headers.
+4. **Disconnect** sends `DELETE` to end the session.
+
+This works because `http_server.py` enables CORS. A page opened from disk has the
+origin `null`, which differs from `http://127.0.0.1:1234`, so the browser blocks its
+requests unless the server allows them. The server also exposes the `Mcp-Session-Id`
+header, which JavaScript can't read otherwise.
+
+> **Note:** CORS allows every origin (`*`), so any web page open in your browser could
+> call this server too. That's fine for this demo, but restrict `allow_origins` for
+> anything real.
 
 ### Using it with Claude Code
 

@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hello MCP Client</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --text: #1d2330;
+    --muted: #5d6677;
+    --border: #d9dde5;
+    --accent: #2f6fde;
+    --accent-text: #ffffff;
+    --ok: #1f8a4c;
+    --err: #c23b3b;
+    --code-bg: #f0f2f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171d;
+      --panel: #1c2028;
+      --text: #e4e7ee;
+      --muted: #9aa3b4;
+      --border: #313744;
+      --accent: #5b8ff0;
+      --accent-text: #0d1117;
+      --ok: #4cc27f;
+      --err: #f07070;
+      --code-bg: #151920;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); margin: 0 0 20px; }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input[type="text"] {
+    flex: 1 1 240px;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+  }
+  button {
+    padding: 8px 14px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--accent-text);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.secondary { background: transparent; color: var(--accent); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .status { margin-top: 10px; color: var(--muted); font-size: 14px; }
+  .status.ok { color: var(--ok); }
+  .status.err { color: var(--err); }
+  .tool { padding: 8px 0; border-top: 1px solid var(--border); }
+  .tool:first-child { border-top: 0; padding-top: 0; }
+  .tool code { font-weight: 600; }
+  .tool p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  .result {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: var(--code-bg);
+    font-size: 16px;
+    font-weight: 600;
+    min-height: 1.5em;
+  }
+  .result.err { color: var(--err); }
+  #log { display: flex; flex-direction: column; gap: 8px; }
+  .entry { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .entry-head {
+    display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+    padding: 6px 10px;
+    background: var(--code-bg);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .entry-head .dir-out { color: var(--accent); }
+  .entry-head .dir-in { color: var(--ok); }
+  .entry-head .dir-err { color: var(--err); }
+  .entry-head span:last-child { color: var(--muted); font-weight: 400; }
+  pre {
+    margin: 0;
+    padding: 8px 10px;
+    overflow-x: auto;
+    font: 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .empty { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Hello MCP Client</h1>
+  <p class="subtitle">A plain HTML + JavaScript MCP client for <code>http_server.py</code> (Streamable HTTP transport).</p>
+
+  <section>
+    <h2>1. Connect</h2>
+    <div class="row">
+      <input id="url" type="text" value="http://127.0.0.1:1234/mcp" aria-label="MCP server URL">
+      <button id="connect">Connect</button>
+      <button id="disconnect" class="secondary" disabled>Disconnect</button>
+    </div>
+    <div id="status" class="status">Not connected.</div>
+  </section>
+
+  <section>
+    <h2>2. Tools</h2>
+    <div class="row">
+      <button id="list" disabled>List Tools</button>
+    </div>
+    <div id="tools" class="status">Connect first, then list the server's tools.</div>
+  </section>
+
+  <section>
+    <h2>3. Call <code>hello</code></h2>
+    <div class="row">
+      <input id="name" type="text" value="Alice" aria-label="Name to greet">
+      <button id="call" disabled>Run Tool</button>
+    </div>
+    <div id="result" class="result"></div>
+  </section>
+
+  <section>
+    <div class="row" style="justify-content: space-between; margin-bottom: 12px;">
+      <h2 style="margin: 0;">Protocol log</h2>
+      <button id="clear" class="secondary">Clear</button>
+    </div>
+    <div id="log"><div class="empty">Every HTTP request and response appears here.</div></div>
+  </section>
+</main>
+
+<script>
+  // MCP protocol revision that uses the initialize handshake.
+  const PROTOCOL_VERSION = "2025-11-25";
+
+  const $ = (id) => document.getElementById(id);
+  let sessionId = null;        // from the Mcp-Session-Id response header
+  let protocolVersion = null;  // negotiated in the initialize result
+  let nextId = 1;
+
+  // ---- Logging -----------------------------------------------------------
+
+  function log(kind, title, detail, body) {
+    const logEl = $("log");
+    const empty = logEl.querySelector(".empty");
+    if (empty) empty.remove();
+
+    const entry = document.createElement("div");
+    entry.className = "entry";
+    const head = document.createElement("div");
+    head.className = "entry-head";
+    const left = document.createElement("span");
+    left.className = kind === "out" ? "dir-out" : kind === "in" ? "dir-in" : "dir-err";
+    left.textContent = (kind === "out" ? "→ " : kind === "in" ? "← " : "✕ ") + title;
+    const right = document.createElement("span");
+    right.textContent = detail;
+    head.append(left, right);
+    entry.append(head);
+
+    if (body !== undefined) {
+      const pre = document.createElement("pre");
+      pre.textContent = typeof body === "string" ? body : JSON.stringify(body, null, 2);
+      entry.append(pre);
+    }
+    logEl.prepend(entry);
+  }
+
+  function setStatus(text, cls = "") {
+    const el = $("status");
+    el.textContent = text;
+    el.className = "status " + cls;
+  }
+
+  function setConnected(on) {
+    $("connect").disabled = on;
+    $("url").disabled = on;
+    $("disconnect").disabled = !on;
+    $("list").disabled = !on;
+    $("call").disabled = !on;
+  }
+
+  // ---- MCP over HTTP -----------------------------------------------------
+
+  function headers() {
+    const h = {
+      "Content-Type": "application/json",
+      // The server may answer with plain JSON or with an SSE stream.
+      "Accept": "application/json, text/event-stream",
+    };
+    if (sessionId) h["Mcp-Session-Id"] = sessionId;
+    if (protocolVersion) h["MCP-Protocol-Version"] = protocolVersion;
+    return h;
+  }
+
+  // Pull JSON-RPC messages out of a text/event-stream body ("data:" lines).
+  function parseSse(text) {
+    const messages = [];
+    for (const event of text.split(/\r?\n\r?\n/)) {
+      const data = event
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trimStart())
+        .join("\n");
+      if (data) {
+        try { messages.push(JSON.parse(data)); } catch { /* not JSON, skip */ }
+      }
+    }
+    return messages;
+  }
+
+  // Send one JSON-RPC message. Requests (with an id) return their result;
+  // notifications (no id) return nothing.
+  async function send(method, params, { notification = false } = {}) {
+    const message = { jsonrpc: "2.0", method };
+    if (!notification) message.id = nextId++;
+    if (params !== undefined) message.params = params;
+
+    const url = $("url").value.trim();
+    log("out", method, "POST " + url, message);
+
+    let res;
+    try {
+      res = await fetch(url, { method: "POST", headers: headers(), body: JSON.stringify(message) });
+    } catch (err) {
+      throw new Error(
+        "Could not reach the server (" + err.message + "). Is http_server.py running, " +
+        "and does it allow cross-origin requests (CORS)?"
+      );
+    }
+
+    const newSession = res.headers.get("Mcp-Session-Id");
+    if (newSession) sessionId = newSession;
+
+    const type = res.headers.get("Content-Type") || "";
+    const text = await res.text();
+    const detail = "HTTP " + res.status + (type ? " · " + type.split(";")[0] : "");
+
+    if (notification) {
+      log(res.ok ? "in" : "err", method, detail, text || undefined);
+      if (!res.ok) throw new Error("Server rejected " + method + ": HTTP " + res.status);
+      return null;
+    }
+
+    let messages = [];
+    if (type.includes("text/event-stream")) {
+      messages = parseSse(text);
+    } else if (text) {
+      try { messages = [JSON.parse(text)]; } catch { /* not JSON */ }
+    }
+    const reply = messages.find((m) => m && m.id === message.id) || messages[0];
+
+    log(res.ok && reply && !reply.error ? "in" : "err", method, detail, reply || text || "(empty body)");
+
+    if (!res.ok && !reply) throw new Error("HTTP " + res.status + ": " + (text || res.statusText));
+    if (!reply) throw new Error("No JSON-RPC response for " + method);
+    if (reply.error) throw new Error(reply.error.message + " (code " + reply.error.code + ")");
+    return reply.result;
+  }
+
+  // ---- UI actions --------------------------------------------------------
+
+  async function connect() {
+    sessionId = null;
+    protocolVersion = null;
+    setStatus("Connecting…");
+    $("connect").disabled = true;
+    try {
+      // Step 1: the handshake. The server answers with its info and a session ID.
+      const init = await send("initialize", {
+        protocolVersion: PROTOCOL_VERSION,
+        capabilities: {},
+        clientInfo: { name: "hello-html-client", version: "1.0.0" },
+      });
+      protocolVersion = init.protocolVersion;
+
+      // Step 2: tell the server the handshake is complete.
+      await send("notifications/initialized", undefined, { notification: true });
+
+      const info = init.serverInfo || {};
+      setStatus(
+        "Connected to " + (info.name || "server") + (info.version ? " " + info.version : "") +
+        " · protocol " + protocolVersion + " · session " + (sessionId || "(none)"),
+        "ok"
+      );
+      setConnected(true);
+    } catch (err) {
+      sessionId = null;
+      protocolVersion = null;
+      setStatus(err.message, "err");
+      setConnected(false);
+    }
+  }
+
+  async function disconnect() {
+    const url = $("url").value.trim();
+    if (sessionId) {
+      log("out", "end session", "DELETE " + url);
+      try {
+        const res = await fetch(url, { method: "DELETE", headers: headers() });
+        log(res.ok ? "in" : "err", "end session", "HTTP " + res.status);
+      } catch (err) {
+        log("err", "end session", err.message);
+      }
+    }
+    sessionId = null;
+    protocolVersion = null;
+    setConnected(false);
+    setStatus("Not connected.");
+  }
+
+  async function listTools() {
+    const el = $("tools");
+    try {
+      const result = await send("tools/list", {});
+      el.className = "";
+      el.replaceChildren();
+      if (!result.tools.length) {
+        el.className = "status";
+        el.textContent = "The server has no tools.";
+        return;
+      }
+      for (const tool of result.tools) {
+        const div = document.createElement("div");
+        div.className = "tool";
+        const name = document.createElement("code");
+        name.textContent = tool.name;
+        const desc = document.createElement("p");
+        const params = Object.entries((tool.inputSchema && tool.inputSchema.properties) || {})
+          .map(([k, v]) => k + (v.description ? " — " + v.description : ""))
+          .join("; ");
+        desc.textContent = (tool.description || "(no description)") + (params ? "  Parameters: " + params : "");
+        div.append(name, desc);
+        el.append(div);
+      }
+    } catch (err) {
+      el.className = "status err";
+      el.textContent = err.message;
+    }
+  }
+
+  async function callHello() {
+    const out = $("result");
+    out.className = "result";
+    out.textContent = "…";
+    try {
+      const result = await send("tools/call", { name: "hello", arguments: { name: $("name").value } });
+      const text = (result.content || [])
+        .filter((c) => c.type === "text")
+        .map((c) => c.text)
+        .join("\n");
+      out.textContent = text || JSON.stringify(result);
+      if (result.isError) out.className = "result err";
+    } catch (err) {
+      out.className = "result err";
+      out.textContent = err.message;
+    }
+  }
+
+  $("connect").addEventListener("click", connect);
+  $("disconnect").addEventListener("click", disconnect);
+  $("list").addEventListener("click", listTools);
+  $("call").addEventListener("click", callHello);
+  $("name").addEventListener("keydown", (e) => { if (e.key === "Enter" && !$("call").disabled) callHello(); });
+  $("clear").addEventListener("click", () => {
+    $("log").replaceChildren();
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "Every HTTP request and response appears here.";
+    $("log").append(empty);
+  });
+</script>
+</body>
+</html>
